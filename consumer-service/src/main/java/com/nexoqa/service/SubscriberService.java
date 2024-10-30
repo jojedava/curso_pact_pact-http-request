@@ -28,4 +28,13 @@ public class SubscriberService {
         }
     }
 
+    public ResponseEntity<Void> unSubscribedUser(User user) {
+        HttpEntity<User> request = new HttpEntity<>(user);
+        try {
+            return new RestTemplate().exchange(getBackendUrl() + "/client-provider/client", HttpMethod.DELETE, request, Void.class);
+        } catch (HttpClientErrorException httpException) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
+    }
+
 }

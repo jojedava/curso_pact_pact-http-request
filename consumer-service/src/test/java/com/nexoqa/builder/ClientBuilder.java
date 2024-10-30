@@ -17,7 +17,7 @@ public class ClientBuilder {
                         generateRandomString(5),
                         generateRandomString(5),
                         "Street " + generateRandomString(6),
-                        generateRandomInteger(18, 99),
+                        generateRandomInteger(18, 99).toString(),
                         generateRandomInteger(911111111, 999999999)
                 ),
                 true

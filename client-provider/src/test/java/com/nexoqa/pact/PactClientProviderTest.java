@@ -13,12 +13,9 @@ import org.junit.runner.RunWith;
 import org.springframework.boot.SpringApplication;
 import org.springframework.web.context.ConfigurableWebApplicationContext;
 
-
 @RunWith(PactRunner.class)
 @Provider("client-provider")
-@PactBroker(
-        host = "localhost", port = "80", consumers = "consumer-service"
-)
+@PactBroker(host = "localhost", port = "80", consumers = "consumer-service")
 public class PactClientProviderTest {
 
     @TestTarget
@@ -33,6 +30,14 @@ public class PactClientProviderTest {
 
     @State("test consumer service -  subscribe")
     public void toGetStateSubscribe() {
+    }
+
+    @State("test consumer service -  unsubscribe")
+    public void toGetStateUnSubscribe() {
+    }
+
+    @State("test consumer service -  unsubscribe invalid user")
+    public void toGetStateUnSubscribeInvalidUser() {
     }
 
 }

@@ -33,103 +33,234 @@ import static org.junit.Assert.assertTrue;
 @SpringBootTest
 public class PactConsumerContractTest {
 
-//     @Autowired
-//     private ClientBuilder clientBuilder;
+        // @Autowired
+        // private ClientBuilder clientBuilder;
 
-    @Autowired
-    private SubscribersBuilder subscribersBuilder;
+        @Autowired
+        private SubscribersBuilder subscribersBuilder;
 
-    @Autowired
-    private SubscriberService subscriberService;
+        @Autowired
+        private SubscriberService subscriberService;
 
-    @Autowired
-    private EmailService emailService;
+        @Autowired
+        private EmailService emailService;
 
-    private Clients testClientsData;
+        private Clients testClientsData;
 
-    private static final String END_POINT_CLIENT = "/client-provider/client";
-    private static final String END_POINT_CLIENTS = "/client-provider/clients";
+        private static final String END_POINT_CLIENT = "/client-provider/client";
+        private static final String END_POINT_CLIENTS = "/client-provider/clients";
 
-    @Rule
-    public PactProviderRule rule = new PactProviderRule("client-provider", this);
+        @Rule
+        public PactProviderRule rule = new PactProviderRule("client-provider", this);
 
+        @Pact(provider = "client-provider", consumer = "consumer-service")
+        public RequestResponsePact subscribePact(PactDslWithProvider builder) {
+                Map<String, String> headers = new HashMap<>();
+                headers.put("Content-Type", "application/json");
 
-    @Pact(provider = "client-provider", consumer = "consumer-service")
-    public RequestResponsePact subscribePact(PactDslWithProvider builder) {
-        Map<String, String> headers = new HashMap<>();
-        headers.put("Content-Type", "application/json");
+                testClientsData = subscribersBuilder.build();
 
-        testClientsData = subscribersBuilder.build();
+                Client clientData = testClientsData.getClients().get(0);
 
-        Client clientData = testClientsData.getClients().get(0);
+                User userData = clientData.getUser();
 
-        User userData = clientData.getUser();
+                PactDslJsonBody clients = new PactDslJsonBody()
+                                .minArrayLike("clients", 1)
+                                .booleanType("activated")
+                                .object("user")
+                                .stringType("name")
+                                .stringType("lastName")
+                                .stringType("address")
+                                .stringType("age")
+                                .integerType("phoneNumber");
 
+                PactDslJsonBody user = new PactDslJsonBody()
+                                .stringType("name", userData.getName())
+                                .stringType("lastName", userData.getLastName())
+                                .stringType("address", userData.getAddress())
+                                .stringType("age", userData.getAge().toString())
+                                .integerType("phoneNumber", userData.getPhoneNumber());
 
-        PactDslJsonBody clients = new PactDslJsonBody()
-                .minArrayLike("clients", 1)
-                .booleanType("activated")
-                .object("user")
-                .stringType("name")
-                .stringType("lastName")
-                .stringType("address")
-                .integerType("age")
-                .integerType("phoneNumber");
+                PactDslJsonBody client = new PactDslJsonBody()
+                                .booleanType("activated")
+                                .object("user")
+                                .stringType("name", userData.getName())
+                                .stringType("lastName", userData.getLastName())
+                                .stringType("address", userData.getAddress())
+                                .stringType("age", userData.getAge().toString())
+                                .integerType("phoneNumber", userData.getPhoneNumber());
 
+                return builder
+                                .given("test consumer service -  subscribe")
+                                .uponReceiving("a request to create a new client")
+                                .path(END_POINT_CLIENT)
+                                .method("POST")
+                                .headers(headers)
+                                // .body(new Gson().toJson(userData, User.class))
+                                .body(user)
+                                .willRespondWith()
+                                .headers(headers)
+                                .status(200)
+                                // .body(new Gson().toJson(clientData, Client.class))
+                                .body(client)
+                                .uponReceiving("a request to notify all active clients")
+                                .path(END_POINT_CLIENTS)
+                                .method("GET")
+                                .willRespondWith()
+                                .status(200)
+                                .headers(headers)
+                                .body(clients)
+                                .toPact();
+        }
 
-        PactDslJsonBody user = new PactDslJsonBody()
-                .stringType("name", userData.getName())
-                .stringType("lastName", userData.getLastName())
-                .stringType("address", userData.getAddress())
-                .integerType("age", userData.getAge())
-                .integerType("phoneNumber", userData.getPhoneNumber());
+        @Pact(provider = "client-provider", consumer = "consumer-service")
+        public RequestResponsePact unSubscribePact(PactDslWithProvider builder) {
+                Map<String, String> headers = new HashMap<>();
+                headers.put("Content-Type", "application/json");
 
-        PactDslJsonBody client = new PactDslJsonBody()
-                .booleanType("activated")
-                .object("user")
-                .stringType("name", userData.getName())
-                .stringType("lastName", userData.getLastName())
-                .stringType("address", userData.getAddress())
-                .integerType("age", userData.getAge())
-                .integerType("phoneNumber", userData.getPhoneNumber());
+                testClientsData = subscribersBuilder.build();
 
-        return builder
-                .given("test consumer service -  subscribe")
-                .uponReceiving("a request to create a new client")
-                .path(END_POINT_CLIENT)
-                .method("POST")
-                .headers(headers)
-                .body(new Gson().toJson(userData, User.class))
-                // .body(user)
-                .willRespondWith()
-                .headers(headers)
-                .status(200)
-                .body(new Gson().toJson(clientData, Client.class))
-                // .body(client)
-                .uponReceiving("a request to notify all active clients")
-                .path(END_POINT_CLIENTS)
-                .method("GET")
-                .willRespondWith()
-                .status(200)
-                .headers(headers)
-                .body(clients)
-                .toPact();
-    }
+                Client clientData = testClientsData.getClients().get(0);
 
-    
+                User userData = clientData.getUser();
 
-    @Test
-    @PactVerification(value = "client-provider", fragment = "subscribePact")
-    public void runSubscribePactTest() {
-        MockServer server = rule.getMockServer();
-        subscriberService.setBackendURL("http://localhost:" + server.getPort());
-        ResponseEntity<Client> subscribedClient = subscriberService
-                .subscribeUser(testClientsData.getClients().get(0).getUser());
-        assertTrue(subscribedClient.getStatusCode().is2xxSuccessful());
+                PactDslJsonBody user = new PactDslJsonBody()
+                                .stringType("name", userData.getName())
+                                .stringType("lastName", userData.getLastName())
+                                .stringType("address", userData.getAddress())
+                                .stringType("age", userData.getAge().toString())
+                                .integerType("phoneNumber", userData.getPhoneNumber());
 
-        emailService.setBackendURL("http://localhost:" + server.getPort());
-        ResponseEntity<List<Client>> notifiedClients = emailService.notifyActiveUsers();
-        assertTrue(notifiedClients.getStatusCode().is2xxSuccessful());
-    }
+                PactDslJsonBody client = new PactDslJsonBody()
+                                .booleanType("activated")
+                                .object("user")
+                                .stringType("name", userData.getName())
+                                .stringType("lastName", userData.getLastName())
+                                .stringType("address", userData.getAddress())
+                                .stringType("age", userData.getAge().toString())
+                                .integerType("phoneNumber", userData.getPhoneNumber());
+
+                return builder
+                                .given("test consumer service -  unsubscribe")
+                                .uponReceiving("a request to create a new client to be deleted")
+                                .path(END_POINT_CLIENT)
+                                .method("POST")
+                                .headers(headers)
+                                .body(user)
+                                .willRespondWith()
+                                .headers(headers)
+                                .status(200)
+                                .body(client)
+                                .uponReceiving("request to delete client")
+                                .path(END_POINT_CLIENT)
+                                .method("DELETE")
+                                .headers(headers)
+                                .body(user)
+                                .willRespondWith()
+                                .status(200)
+                                .toPact();
+        }
+
+        @Pact(provider = "client-provider", consumer = "consumer-service")
+        public RequestResponsePact unSubscribeInvalidUserPact(PactDslWithProvider builder) {
+                Map<String, String> headers = new HashMap<>();
+                headers.put("Content-Type", "application/json");
+
+                testClientsData = subscribersBuilder.build();
+
+                Client clientData = testClientsData.getClients().get(0);
+
+                User userData = clientData.getUser();
+
+                PactDslJsonBody user = new PactDslJsonBody()
+                                .stringType("name", userData.getName())
+                                .stringType("lastName", userData.getLastName())
+                                .stringType("address", userData.getAddress())
+                                .stringType("age", userData.getAge().toString())
+                                .integerType("phoneNumber", userData.getPhoneNumber());
+
+                PactDslJsonBody invalidUser = new PactDslJsonBody()
+                                .stringType("name", "INVALID")
+                                .stringType("lastName", userData.getLastName())
+                                .stringType("address", userData.getAddress())
+                                .stringType("age", userData.getAge().toString())
+                                .integerType("phoneNumber", userData.getPhoneNumber());
+
+                PactDslJsonBody client = new PactDslJsonBody()
+                                .booleanType("activated")
+                                .object("user")
+                                .stringType("name", userData.getName())
+                                .stringType("lastName", userData.getLastName())
+                                .stringType("address", userData.getAddress())
+                                .stringType("age", userData.getAge().toString())
+                                .integerType("phoneNumber", userData.getPhoneNumber());
+
+                return builder
+                                .given("test consumer service -  unsubscribe invalid user")
+                                .uponReceiving("a request to create a new client to be deleted")
+                                .path(END_POINT_CLIENT)
+                                .method("POST")
+                                .headers(headers)
+                                .body(user)
+                                .willRespondWith()
+                                .headers(headers)
+                                .status(200)
+                                .body(client)
+                                .uponReceiving("request to delete client")
+                                .path(END_POINT_CLIENT)
+                                .method("DELETE")
+                                .headers(headers)
+                                .body(invalidUser)
+                                .willRespondWith()
+                                .status(404)
+                                .toPact();
+        }
+
+        @Test
+        @PactVerification(value = "client-provider", fragment = "subscribePact")
+        public void runSubscribePactTest() {
+                MockServer server = rule.getMockServer();
+                subscriberService.setBackendURL("http://localhost:" + server.getPort());
+                ResponseEntity<Client> subscribedClient = subscriberService
+                                .subscribeUser(testClientsData.getClients().get(0).getUser());
+                assertTrue(subscribedClient.getStatusCode().is2xxSuccessful());
+
+                emailService.setBackendURL("http://localhost:" + server.getPort());
+                ResponseEntity<List<Client>> notifiedClients = emailService.notifyActiveUsers();
+                assertTrue(notifiedClients.getStatusCode().is2xxSuccessful());
+        }
+
+        @Test
+        @PactVerification(value = "client-provider", fragment = "unSubscribePact")
+        public void runUnSubscribePactTest() {
+                MockServer server = rule.getMockServer();
+                subscriberService.setBackendURL("http://localhost:" + server.getPort());
+                ResponseEntity<Client> subscribedClient = subscriberService
+                                .subscribeUser(testClientsData.getClients().get(0).getUser());
+                assertTrue(subscribedClient.getStatusCode().is2xxSuccessful());
+
+                ResponseEntity<Void> unSubscribedClient = subscriberService
+                                .unSubscribedUser(testClientsData.getClients().get(0).getUser());
+                assertTrue(unSubscribedClient.getStatusCode().is2xxSuccessful());
+
+        }
+
+        @Test
+        @PactVerification(value = "client-provider", fragment = "unSubscribeInvalidUserPact")
+        public void runUnSubscribeInvalidUserPactTest() {
+                MockServer server = rule.getMockServer();
+                subscriberService.setBackendURL("http://localhost:" + server.getPort());
+                ResponseEntity<Client> subscribedClient = subscriberService
+                                .subscribeUser(testClientsData.getClients().get(0).getUser());
+                assertTrue(subscribedClient.getStatusCode().is2xxSuccessful());
+
+                User temp = testClientsData.getClients().get(0).getUser();
+                User invalidUser = new User("INVALID", temp.getLastName(), temp.getAddress(), temp.getAge(),
+                                temp.getPhoneNumber());
+                ResponseEntity<Void> unSubscribedClient = subscriberService
+                                .unSubscribedUser(invalidUser);
+                assertTrue(unSubscribedClient.getStatusCode().is4xxClientError());
+
+        }
 
 }
